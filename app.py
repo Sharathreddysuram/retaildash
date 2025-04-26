@@ -34,12 +34,26 @@ if registered:
 # 1) Database Connection
 @st.cache_resource
 def get_engine():
-    conn_str = os.getenv("DATABASE_CONN_STR")
-    if not conn_str:
-        st.error("No database connection string found. Please set DATABASE_CONN_STR environment variable.")
-        st.stop()
-    return create_engine(conn_str, connect_args={"timeout": 30})
-engine = get_engine()
+    try:
+        params = urllib.parse.quote_plus(
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            "SERVER=sharathfinal.database.windows.net,1433;"
+            "DATABASE=finalproject;"
+            "UID=siddu@sharathfinal;"
+            "PWD=Cloud@123;"  # Replace with your actual password
+            "Encrypt=yes;"
+            "TrustServerCertificate=no;"
+            "Connection Timeout=30;"
+        )
+        conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
+        engine = create_engine(conn_str, connect_args={"timeout": 30})
+        # quick test
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        return engine
+    except Exception as e:
+        st.sidebar.error(f"❌ Failed to connect to Azure SQL:\n\n{e}")
+        return None
 
 # 2) File Uploads
 st.sidebar.header("📂 Data Loading")
