@@ -70,7 +70,7 @@ def load_data():
         st.sidebar.success("\u2705 Loaded from Azure SQL Database")
 
         date_col = find_col(trans, "date", "purchase", "purchase_")
-        trans[date_col] = pd.to_datetime(trans[date_col], infer_datetime_format=True)
+        trans[date_col] = pd.to_datetime(trans[date_col], errors="coerce")
         trans = trans.rename(columns={date_col: "DATE"})
 
     except Exception as e:
@@ -223,8 +223,8 @@ with st.expander("👪 Demographics & Engagement", expanded=True):
 with st.expander("📊 Engagement Over Time by Commodity"):
     top5 = merged.groupby("COMMODITY")["SPEND"].sum().nlargest(5).index
     ts_c = merged[merged["COMMODITY"].isin(top5)].groupby(
-        [pd.Grouper(key="DATE",freq="M"), "COMMODITY"]
-    )["SPEND"].sum().reset_index()
+    [pd.Grouper(key="DATE", freq="ME"), "COMMODITY"]
+)["SPEND"].sum().reset_index()
     fig, ax = plt.subplots(figsize=(6,3))
     for c in top5:
         dfc = ts_c[ts_c["COMMODITY"]==c]
