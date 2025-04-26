@@ -1,7 +1,6 @@
-# Deploy Python Streamlit App to Azure Web App
-# Docs: https://aka.ms/python-webapps-actions
+# GitHub Actions Workflow to Build and Deploy Python Streamlit App to Azure
 
-name: Build and Deploy Python App to Azure Web App - retaildash-sharath
+name: Build and deploy Python app to Azure Web App - retaildash-sharath
 
 on:
   push:
@@ -24,29 +23,24 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Create and activate virtual environment
+      - name: Create virtual environment & install dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
-
-      - name: Install dependencies
-        run: |
           pip install -r requirements.txt
 
-      - name: Prepare artifact (copy everything except venv/)
+      - name: Prepare full project package
         run: |
           mkdir package
-          rsync -av --progress ./ ./package --exclude venv --exclude .git
+          rsync -av --exclude='venv' ./ ./package/
           cd package
           zip -r ../release.zip .
-          cd ..
 
-      - name: Upload artifact
+      - name: Upload artifact for deploy job
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            release.zip
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -56,12 +50,12 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
-      - name: Download artifact
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
 
-      - name: Unzip artifact
+      - name: Unzip for deployment
         run: unzip release.zip
 
       - name: Deploy to Azure Web App
@@ -71,3 +65,4 @@ jobs:
           app-name: 'retaildash-sharath'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_7013BF198DA1418992684D7D5B1AC155 }}
+          package: .
