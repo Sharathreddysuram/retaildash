@@ -21,15 +21,26 @@ def find_col(df, *candidates):
             return cols[key]
     raise KeyError(f"None of {candidates} found in columns")
 
-# Updated database connection
+# 0) Sign-Up Form
+st.sidebar.header("\U0001F464 User Signup")
+with st.sidebar.form("signup_form", clear_on_submit=False):
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    email    = st.text_input("Email")
+    registered = st.form_submit_button("Register")
+if registered:
+    st.sidebar.success(f"Registered as **{username}** ({email})")
+
+# 1) Database Connection
 @st.cache_resource
 def get_engine():
-    conn_str = os.environ.get("DATABASE_CONN_STR")
+    conn_str = os.getenv("DATABASE_CONN_STR")
     if not conn_str:
         st.error("No database connection string found. Please set DATABASE_CONN_STR environment variable.")
         st.stop()
     return create_engine(conn_str, connect_args={"timeout": 30})
 engine = get_engine()
+
 # 2) File Uploads
 st.sidebar.header("📂 Data Loading")
 for tbl, key in [("Households","upload_hh"),("Transactions","upload_tr"),("Products","upload_pr")]:
@@ -178,6 +189,13 @@ if rate>0:
     st.metric("Predicted Churn Risk",f"{p*100:.1f}%",delta=f"{rate*100:.1f}%")
 else:
     st.warning("No churn cases; try changing the window.")
+st.markdown("""
+**How it works**  
+- Recency = days since last purchase  
+- Frequency = # of baskets  
+- Monetary = total spend  
+- Logistic regression on RFM
+""")
 st.markdown("---")
 st.header("🔎 Retail Insights Dashboard")
 
