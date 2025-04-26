@@ -49,7 +49,7 @@ def get_engine():
         conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
         engine = create_engine(conn_str, connect_args={"timeout": 30})
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         return engine
     except Exception as e:
         st.sidebar.error(f"\u274C Failed to connect to Azure SQL:\n\n{e}")
