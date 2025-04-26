@@ -260,4 +260,3 @@ with st.expander("🌿 Brand & Organic Preferences"):
         fig, ax = plt.subplots(figsize=(4,2))
         ax.bar(of[org_col], of["SPEND"]); ax.set_ylabel("Total Spend")
         fig.tight_layout(); st.pyplot(fig)
-
