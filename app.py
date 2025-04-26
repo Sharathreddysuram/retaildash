@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, association_rules
 from sklearn.linear_model import LogisticRegression
