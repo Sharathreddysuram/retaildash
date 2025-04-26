@@ -36,67 +36,53 @@ if registered:
 @st.cache_resource
 def get_engine():
     try:
-        # Connection parameters
-        driver = "ODBC Driver 17 for SQL Server"
-        server = "sharathfinal.database.windows.net"
-        database = "finalproject"
-        username = "siddu@sharathfinal"
-        password = "Cloud@123"
-
-        # Build ODBC string
-        odbc_str = (
-            f"DRIVER={{{driver}}};"
-            f"SERVER={server};"
-            f"DATABASE={database};"
-            f"UID={username};"
-            f"PWD={password};"
-            f"Encrypt=yes;"
-            f"TrustServerCertificate=no;"
-            f"Connection Timeout=30;"
+        params = urllib.parse.quote_plus(
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            "SERVER=sharathfinal.database.windows.net,1433;"
+            "DATABASE=finalproject;"
+            "UID=siddu@sharathfinal;"
+            "PWD=Cloud@123;"
+            "Encrypt=yes;"
+            "TrustServerCertificate=no;"
+            "Connection Timeout=30;"
         )
-
-        params = urllib.parse.quote_plus(odbc_str)
-        engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
-
-        # Test the connection
+        conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
+        engine = create_engine(conn_str, connect_args={"timeout": 30})
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-
         return engine
-
     except Exception as e:
-        st.sidebar.error(f"❌ Failed to connect to Azure SQL: {e}")
+        st.sidebar.error(f"\u274C Failed to connect to Azure SQL:\n\n{e}")
         return None
 
-# --- Data loading function
-@st.cache_data
+engine = get_engine()
+
+# --- Load Data ---
 def load_data():
-    engine = get_engine()
+    if engine is None:
+        st.stop()
+    try:
+        hh    = pd.read_sql_table("Households", engine)
+        trans = pd.read_sql_table("Transactions", engine)
+        prod  = pd.read_sql_table("Products", engine)
 
-    if engine is not None:
-        try:
-            # Load from Azure SQL
-            hh = pd.read_sql_table("Households", engine)
-            trans = pd.read_sql_table("Transactions", engine)
-            prod = pd.read_sql_table("Products", engine)
+        hh.columns, trans.columns, prod.columns = map(lambda c: c.str.strip(), [hh.columns, trans.columns, prod.columns])
+        st.sidebar.success("\u2705 Loaded from Azure SQL Database")
 
-            # Strip columns
-            hh.columns, trans.columns, prod.columns = map(lambda c: c.str.strip(), [hh.columns, trans.columns, prod.columns])
+        date_col = find_col(trans, "date", "purchase", "purchase_")
+        trans[date_col] = pd.to_datetime(trans[date_col], infer_datetime_format=True)
+        trans = trans.rename(columns={date_col: "DATE"})
 
-            st.sidebar.success("✅ Loaded from Azure SQL Database")
-            return hh, trans, prod
+    except Exception as e:
+        st.sidebar.error(f"\u274C Failed to load data from Azure SQL: {e}")
+        st.stop()
 
-        except Exception as e:
-            st.sidebar.warning(f"⚠️ Connection succeeded but table loading failed: {e}")
-    
-    # Fallback to CSV
-    st.sidebar.warning("⚠️ Loading from CSVs instead")
-    hh = pd.read_csv("400_households.csv")
-    trans = pd.read_csv("400_transactions.csv")
-    prod = pd.read_csv("400_products.csv")
-    hh.columns, trans.columns, prod.columns = map(lambda c: c.str.strip(), [hh.columns, trans.columns, prod.columns])
-
-    return hh, trans, prod
+    merged = (
+        trans
+        .merge(prod, on=find_col(trans, "product_num"), how="left")
+        .merge(hh,   on=find_col(trans, "hshd_num"),    how="left")
+    )
+    return hh, prod, trans, merged
 
 hh, prod, trans, merged = load_data()
 
@@ -274,3 +260,4 @@ with st.expander("🌿 Brand & Organic Preferences"):
         fig, ax = plt.subplots(figsize=(4,2))
         ax.bar(of[org_col], of["SPEND"]); ax.set_ylabel("Total Spend")
         fig.tight_layout(); st.pyplot(fig)
+
