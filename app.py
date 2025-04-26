@@ -35,7 +35,8 @@ if registered:
 # 1) Database Connection
 @st.cache_resource
 def get_engine():
-    conn_str = st.secrets["DATABASE"]["conn_str"]
+    import os
+    conn_str = os.environ["AZURE_SQL_CONN"]
     return create_engine(conn_str, connect_args={"timeout": 30})
 engine = get_engine()
 
@@ -254,4 +255,3 @@ with st.expander("🌿 Brand & Organic Preferences"):
         fig, ax = plt.subplots(figsize=(4,2))
         ax.bar(of[org_col], of["SPEND"]); ax.set_ylabel("Total Spend")
         fig.tight_layout(); st.pyplot(fig)
-
