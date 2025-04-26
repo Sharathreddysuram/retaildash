@@ -2,14 +2,14 @@ import pandas as pd
 from sqlalchemy import create_engine
 import urllib
 
-# 1) Your Azure SQL connection details (using pymssql driver)
+# 1) Your Azure SQL connection details (using pyodbc driver)
 username = "siddu"
 password = "Cloud@123"
 server   = "sharathfinal.database.windows.net"
 database = "finalproject"
 
-# 2) Build the connection string
-conn_str = f"mssql+pymssql://{username}:{password}@{server}/{database}"
+# 2) Build the connection string (pyodbc)
+conn_str = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver=ODBC+Driver+17+for+SQL+Server"
 engine   = create_engine(conn_str)
 
 # 3) CSV → table mapping (absolute paths)
@@ -45,4 +45,3 @@ for table, path in tables:
     print(f" → {table} loaded ({df.shape[0]} rows).")
 
 print("\n✅ All tables loaded successfully!")
-
