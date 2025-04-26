@@ -3,8 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
-
+import urllib
 from sqlalchemy import create_engine
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, association_rules
@@ -14,6 +13,7 @@ from sklearn.model_selection import train_test_split
 
 st.set_page_config(page_title="Retail Analytics on Azure", layout="wide")
 
+# --- Utility ---
 def find_col(df, *candidates):
     cols = {c.strip().lower(): c.strip() for c in df.columns}
     for cand in candidates:
@@ -22,7 +22,7 @@ def find_col(df, *candidates):
             return cols[key]
     raise KeyError(f"None of {candidates} found in columns")
 
-# 0) Sign-Up Form
+# --- User Signup ---
 st.sidebar.header("\U0001F464 User Signup")
 with st.sidebar.form("signup_form", clear_on_submit=False):
     username = st.text_input("Username")
@@ -32,7 +32,7 @@ with st.sidebar.form("signup_form", clear_on_submit=False):
 if registered:
     st.sidebar.success(f"Registered as **{username}** ({email})")
 
-# 1) Database Connection
+# --- Azure SQL Engine ---
 @st.cache_resource
 def get_engine():
     try:
@@ -41,55 +41,42 @@ def get_engine():
             "SERVER=sharathfinal.database.windows.net,1433;"
             "DATABASE=finalproject;"
             "UID=siddu@sharathfinal;"
-            "PWD=Cloud@123;"  # Replace with your actual password
+            "PWD=Cloud@123;"
             "Encrypt=yes;"
             "TrustServerCertificate=no;"
             "Connection Timeout=30;"
         )
         conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
         engine = create_engine(conn_str, connect_args={"timeout": 30})
-        # quick test
         with engine.connect() as conn:
             conn.execute("SELECT 1")
         return engine
     except Exception as e:
-        st.sidebar.error(f"❌ Failed to connect to Azure SQL:\n\n{e}")
+        st.sidebar.error(f"\u274C Failed to connect to Azure SQL:\n\n{e}")
         return None
 
-# 2) File Uploads
-st.sidebar.header("📂 Data Loading")
-for tbl, key in [("Households","upload_hh"),("Transactions","upload_tr"),("Products","upload_pr")]:
-    up = st.sidebar.file_uploader(f"{tbl} CSV", type="csv", key=key)
-    if up:
-        df = pd.read_csv(up)
-        df.columns = df.columns.str.strip()
-        df.to_sql(tbl, engine, if_exists="replace", index=False)
-        st.sidebar.success(f"✅ {tbl} updated")
+engine = get_engine()
 
-# 3) Load Data
+# --- Load Data ---
 def load_data():
+    if engine is None:
+        st.stop()
     try:
-        # Try loading from Azure SQL database
         hh    = pd.read_sql_table("Households", engine)
         trans = pd.read_sql_table("Transactions", engine)
         prod  = pd.read_sql_table("Products", engine)
 
-        # Clean column names
         hh.columns, trans.columns, prod.columns = map(lambda c: c.str.strip(), [hh.columns, trans.columns, prod.columns])
+        st.sidebar.success("\u2705 Loaded from Azure SQL Database")
 
-        st.sidebar.success("✅ Loaded from Azure SQL Database")
-
-        # Format date column
         date_col = find_col(trans, "date", "purchase", "purchase_")
         trans[date_col] = pd.to_datetime(trans[date_col], infer_datetime_format=True)
         trans = trans.rename(columns={date_col: "DATE"})
 
     except Exception as e:
-        # If database connection fails, show clean error and stop
-        st.sidebar.error(f"❌ Failed to load data from Azure SQL: {e}")
+        st.sidebar.error(f"\u274C Failed to load data from Azure SQL: {e}")
         st.stop()
 
-    # Merge tables
     merged = (
         trans
         .merge(prod, on=find_col(trans, "product_num"), how="left")
@@ -97,8 +84,8 @@ def load_data():
     )
     return hh, prod, trans, merged
 
-# Load data
 hh, prod, trans, merged = load_data()
+
 
 # 4) Controls
 st.sidebar.header("⚙️ Analytics Controls")
@@ -273,3 +260,4 @@ with st.expander("🌿 Brand & Organic Preferences"):
         fig, ax = plt.subplots(figsize=(4,2))
         ax.bar(of[org_col], of["SPEND"]); ax.set_ylabel("Total Spend")
         fig.tight_layout(); st.pyplot(fig)
+
