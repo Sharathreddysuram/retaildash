@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -35,8 +33,7 @@ if registered:
 # 1) Database Connection
 @st.cache_resource
 def get_engine():
-    import os
-    conn_str = os.environ["AZURE_SQL_CONN"]
+    conn_str = st.secrets["DATABASE"]["conn_str"]
     return create_engine(conn_str, connect_args={"timeout": 30})
 engine = get_engine()
 
@@ -188,13 +185,6 @@ if rate>0:
     st.metric("Predicted Churn Risk",f"{p*100:.1f}%",delta=f"{rate*100:.1f}%")
 else:
     st.warning("No churn cases; try changing the window.")
-st.markdown("""
-**How it works**  
-- Recency = days since last purchase  
-- Frequency = # of baskets  
-- Monetary = total spend  
-- Logistic regression on RFM
-""")
 st.markdown("---")
 st.header("🔎 Retail Insights Dashboard")
 
