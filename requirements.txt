@@ -6,3 +6,4 @@ matplotlib
 mlxtend
 scikit-learn
 pyodbc
+pymssql
