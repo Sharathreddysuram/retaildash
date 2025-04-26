@@ -1,8 +1,7 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
+# Deploy Python Streamlit App to Azure Web App
+# Docs: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Python app to Azure Web App - retaildash-sharath
+name: Build and Deploy Python App to Azure Web App - retaildash-sharath
 
 on:
   push:
@@ -17,9 +16,10 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python version
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -30,21 +30,26 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
-      # ➡️ New Step: Zip *only* needed files (exclude venv)
+      # Optional: Add test steps here if needed
+
       - name: Prepare artifact
         run: |
           mkdir package
-          cp -r app.py requirements.txt 400_households.csv 400_transactions.csv 400_products.csv package/
-          cp -r .streamlit package/.streamlit || true
-          zip -r release.zip package
+          shopt -s extglob
+          cp -r !(venv|.git|release.zip) package/
+          cd package
+          zip -r ../release.zip .
+          cd ..
 
-      - name: Upload artifact for deployment
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: release.zip
+          path: |
+            release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -54,16 +59,13 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
 
       - name: Unzip artifact
-        run: |
-          unzip release.zip
-          mv package/* .
-          rm -r package
+        run: unzip release.zip
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
