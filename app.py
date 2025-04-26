@@ -52,35 +52,37 @@ for tbl, key in [("Households","upload_hh"),("Transactions","upload_tr"),("Produ
         st.sidebar.success(f"✅ {tbl} updated")
 
 # 3) Load Data
-@st.cache_data
 def load_data():
     try:
-        hh    = pd.read_sql_table("Households",   engine)
+        # Try loading from Azure SQL database
+        hh    = pd.read_sql_table("Households", engine)
         trans = pd.read_sql_table("Transactions", engine)
-        prod  = pd.read_sql_table("Products",     engine)
-        hh.columns, trans.columns, prod.columns = map(lambda c:c.str.strip(), [hh.columns, trans.columns, prod.columns])
-        st.sidebar.success("✅ Loaded from Azure SQL")
+        prod  = pd.read_sql_table("Products", engine)
 
-        date_col = find_col(trans, "date","purchase","purchase_")
+        # Clean column names
+        hh.columns, trans.columns, prod.columns = map(lambda c: c.str.strip(), [hh.columns, trans.columns, prod.columns])
+
+        st.sidebar.success("✅ Loaded from Azure SQL Database")
+
+        # Format date column
+        date_col = find_col(trans, "date", "purchase", "purchase_")
         trans[date_col] = pd.to_datetime(trans[date_col], infer_datetime_format=True)
-        trans = trans.rename(columns={date_col:"DATE"})
-    except:
-        st.sidebar.warning("⚠️ SQL failed, loading CSVs")
-        hh    = pd.read_csv("400_households.csv")
-        trans = pd.read_csv("400_transactions.csv")
-        prod  = pd.read_csv("400_products.csv")
-        hh.columns, trans.columns, prod.columns = map(lambda c:c.str.strip(), [hh.columns, trans.columns, prod.columns])
-        date_col = find_col(trans, "date","purchase","purchase_")
-        trans[date_col] = pd.to_datetime(trans[date_col], errors="coerce")
-        trans = trans.rename(columns={date_col:"DATE"})
-        st.sidebar.success("✅ Loaded from CSVs")
+        trans = trans.rename(columns={date_col: "DATE"})
 
-    merged = (trans
-        .merge(prod, on=find_col(trans,"product_num"), how="left")
-        .merge(hh,   on=find_col(trans,"hshd_num"),    how="left")
+    except Exception as e:
+        # If database connection fails, show clean error and stop
+        st.sidebar.error(f"❌ Failed to load data from Azure SQL: {e}")
+        st.stop()
+
+    # Merge tables
+    merged = (
+        trans
+        .merge(prod, on=find_col(trans, "product_num"), how="left")
+        .merge(hh,   on=find_col(trans, "hshd_num"),    how="left")
     )
     return hh, prod, trans, merged
 
+# Load data
 hh, prod, trans, merged = load_data()
 
 # 4) Controls
